@@ -6,7 +6,7 @@ import re
 # -------------------------------
 # Optional: version for quick verification
 # -------------------------------
-MODEL_VERSION = "v3 (email + URL)"
+MODEL_VERSION = "v3"
 
 # -------------------------------
 # Cleaning function (same as training)
@@ -56,20 +56,21 @@ if st.button("Analyse"):
         indices = text_vec.nonzero()[1]
 
         word_scores = [(feature_names[i], coefficients[i]) for i in indices]
+        word_scores = sorted(word_scores, key=lambda x: abs(x[1]), reverse=True)[:20]
 
         # -------------------------------
-        # Filter out neutral/common tokens
+        # Filter out neutral/common tokens (single or multi-word)
         # -------------------------------
         NEUTRAL_TOKENS = ["url", "com", "org", "www", "http", "https", "_email_"]
-        word_scores = [(w, s) for w, s in word_scores if w not in NEUTRAL_TOKENS]
-
-        # Sort top 10 indicators
-        word_scores = sorted(word_scores, key=lambda x: abs(x[1]), reverse=True)[:10]
+        word_scores = [
+            (w, s) for w, s in word_scores
+            if not any(nt in w for nt in NEUTRAL_TOKENS)
+        ]
 
         phishing_indicators = [w for w, s in word_scores if s > 0]
 
         # -------------------------------
-        # Optional whitelist domains
+        # Optional whitelist
         # -------------------------------
         SAFE_DOMAINS = ["linkedin.com", "github.com", "python.org"]
         is_whitelisted = any(domain in text.lower() for domain in SAFE_DOMAINS)
@@ -90,12 +91,14 @@ if st.button("Analyse"):
         # -------------------------------
         # Display top indicators
         # -------------------------------
+        st.subheader("🔍 Key Indicators")
         if word_scores:
-            st.subheader("🔍 Key Indicators")
             for word, score in word_scores:
                 if score > 0:
                     st.write(f"🔴 {word} (phishing indicator)")
                 else:
                     st.write(f"🟢 {word} (legitimate indicator)")
+        else:
+            st.write("No significant indicators detected.")
     else:
         st.warning("Please enter some text to analyse.")
