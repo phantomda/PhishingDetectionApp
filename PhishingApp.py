@@ -45,18 +45,6 @@ st.divider()
 text = st.text_area("📩 Enter email or URL:", height=150)
 
 # -------------------------------
-# Test mode example URLs
-# -------------------------------
-if st.checkbox("Test Mode Examples"):
-    st.write("""
-    Examples you can test:
-    - http://secure-bank-login.com
-    - http://verify-paypal-account.info
-    - http://update-your-apple-id.com
-    - http://linkedin.com/in/username
-    """)
-
-# -------------------------------
 # Analyse button
 # -------------------------------
 if st.button("Analyse"):
