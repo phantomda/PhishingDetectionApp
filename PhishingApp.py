@@ -6,14 +6,14 @@ import re
 # -------------------------------
 # Optional: version for quick verification
 # -------------------------------
-MODEL_VERSION = "v2"
+MODEL_VERSION = "v3 (email + URL)"
 
 # -------------------------------
 # Cleaning function (same as training)
 # -------------------------------
 def clean_text(text):
     text = str(text).lower()
-    # Replace URLs and emails with tokens
+    # Normalize URLs and emails
     text = re.sub(r'http\S+|www\S+', ' _url_ ', text)
     text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', ' _email_ ', text)
     text = re.sub(r'\d+', '', text)
@@ -48,33 +48,29 @@ if st.button("Analyse"):
         text_vec = vectorizer.transform([cleaned])
 
         # Prediction probability
-        prob = model.predict_proba(text_vec)[0][1]  # Probability of phishing
+        prob = model.predict_proba(text_vec)[0][1]
 
-        # -------------------------------
         # Explainability (top words)
-        # -------------------------------
         feature_names = vectorizer.get_feature_names_out()
         coefficients = model.coef_[0]
         indices = text_vec.nonzero()[1]
 
-        # Get all word scores from input
         word_scores = [(feature_names[i], coefficients[i]) for i in indices]
+
+        # -------------------------------
+        # Filter out neutral/common tokens
+        # -------------------------------
+        NEUTRAL_TOKENS = ["url", "com", "org", "www", "http", "https", "_email_"]
+        word_scores = [(w, s) for w, s in word_scores if w not in NEUTRAL_TOKENS]
+
+        # Sort top 10 indicators
         word_scores = sorted(word_scores, key=lambda x: abs(x[1]), reverse=True)[:10]
 
-        # Option A: Filter out unigrams that are part of bigger n-grams
-        filtered_scores = []
-        for w, s in word_scores:
-            if any(w in other_w and w != other_w for other_w, _ in word_scores):
-                continue
-            filtered_scores.append((w, s))
-        word_scores = filtered_scores
-
-        # -------------------------------
-        # Phishing indicators
-        # -------------------------------
         phishing_indicators = [w for w, s in word_scores if s > 0]
 
-        # Optional whitelist
+        # -------------------------------
+        # Optional whitelist domains
+        # -------------------------------
         SAFE_DOMAINS = ["linkedin.com", "github.com", "python.org"]
         is_whitelisted = any(domain in text.lower() for domain in SAFE_DOMAINS)
 
@@ -94,12 +90,12 @@ if st.button("Analyse"):
         # -------------------------------
         # Display top indicators
         # -------------------------------
-        st.subheader("🔍 Key Indicators")
-        for word, score in word_scores:
-            if score > 0:
-                st.write(f"🔴 {word} (phishing indicator)")
-            else:
-                st.write(f"🟢 {word} (legitimate indicator)")
-
+        if word_scores:
+            st.subheader("🔍 Key Indicators")
+            for word, score in word_scores:
+                if score > 0:
+                    st.write(f"🔴 {word} (phishing indicator)")
+                else:
+                    st.write(f"🟢 {word} (legitimate indicator)")
     else:
         st.warning("Please enter some text to analyse.")
