@@ -43,47 +43,44 @@ text = st.text_area("📩 Enter email or URL:", height=150)
 
 if st.button("Analyse"):
     if text:
-        # Clean + vectorize
+        # Clean + transform input
         cleaned = clean_text(text)
         text_vec = vectorizer.transform([cleaned])
 
-        # Predict probability of phishing
-        prob = model.predict_proba(text_vec)[0][1]  # Probability phishing
+        # Prediction probability
+        prob = model.predict_proba(text_vec)[0][1]
 
-        st.divider()
-
-        # -------------------------------
-        # Result thresholds
-        # -------------------------------
-        if prob > 0.85:
-            st.error(f"⚠️ Phishing ({prob*100:.2f}%)")
-        elif prob > 0.6:
-            st.warning(f"⚠️ Suspicious ({prob*100:.2f}%)")
-        else:
-            st.success(f"✅ Legitimate ({(1-prob)*100:.2f}%)")
-
-        # Optional: progress bar
-        st.progress(int(prob*100))
-
-        # -------------------------------
         # Explainability (top words)
-        # -------------------------------
-        st.subheader("🔍 Key Indicators")
         feature_names = vectorizer.get_feature_names_out()
         coefficients = model.coef_[0]
         indices = text_vec.nonzero()[1]
 
-        if indices.size == 0:
-            st.info("No recognizable words from the training data were found in this input.")
+        word_scores = [(feature_names[i], coefficients[i]) for i in indices]
+        word_scores = sorted(word_scores, key=lambda x: abs(x[1]), reverse=True)[:10]
+
+        phishing_indicators = [w for w, s in word_scores if s > 0]
+
+        # Optional whitelist
+        SAFE_DOMAINS = ["linkedin.com", "github.com", "python.org"]
+        is_whitelisted = any(domain in text.lower() for domain in SAFE_DOMAINS)
+
+        # Determine classification
+        if is_whitelisted:
+            st.success(f"✅ Legitimate (whitelisted domain)")
         else:
-            word_scores = [(feature_names[i], coefficients[i]) for i in indices]
-            word_scores = sorted(word_scores, key=lambda x: abs(x[1]), reverse=True)[:10]
+            if prob > 0.85 and len(phishing_indicators) > 0:
+                st.error(f"⚠️ Phishing ({prob*100:.2f}%)")
+            elif prob > 0.6 and len(phishing_indicators) > 0:
+                st.warning(f"⚠️ Suspicious ({prob*100:.2f}%)")
+            else:
+                st.success(f"✅ Legitimate ({(1-prob)*100:.2f}%)")
 
-            for word, score in word_scores:
-                if score > 0:
-                    st.write(f"🔴 {word} (phishing indicator)")
-                else:
-                    st.write(f"🟢 {word} (legitimate indicator)")
-
+        # Display top indicators
+        st.subheader("🔍 Key Indicators")
+        for word, score in word_scores:
+            if score > 0:
+                st.write(f"🔴 {word} (phishing indicator)")
+            else:
+                st.write(f"🟢 {word} (legitimate indicator)")
     else:
         st.warning("Please enter some text to analyse.")
