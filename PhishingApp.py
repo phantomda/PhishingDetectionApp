@@ -6,7 +6,7 @@ import re
 # -------------------------------
 # Optional: version for quick verification
 # -------------------------------
-MODEL_VERSION = "v3"
+MODEL_VERSION = "v2"
 
 # -------------------------------
 # Cleaning function (same as training)
