@@ -16,7 +16,7 @@ st.divider()
 # Input
 text = st.text_area("📩 Enter email or URL:", height=150)
 
-if st.button("Analyze"):
+if st.button("Analyse"):
     if text:
         # Transform input
         text_vec = vectorizer.transform([text])
